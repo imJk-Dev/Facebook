@@ -1,0 +1,28 @@
+@isTest
+private class pathBatchUpdateTest {
+    @isTest
+    static void testBatchUpdatePath() {
+        // Create test data
+        // production data
+        //SymphonyIPM__Patent__c testPatent = new SymphonyIPM__Patent__c(SymphonyIPM__Family_ID__c = '000612', SymphonyIPM__Hierarchy__c = 'a1C2E00000MkZ79UAF');
+        //sandbox data
+        SymphonyIPM__Patent__c testPatent = new SymphonyIPM__Patent__c(SymphonyIPM__Family_ID__c = '202447', SymphonyIPM__Hierarchy__c = 'a1C2i0000024eAeEAI');
+        insert testPatent;
+        
+        Set<Id> patentIds = new Set<Id>{testPatent.Id};
+            
+            // Start the batch process
+            Test.startTest();
+        batchUpdatePath batch = new batchUpdatePath(patentIds);
+        Database.executeBatch(batch);
+        Test.stopTest();
+        
+        // Verify the results
+        SymphonyIPM__Patent__c updatedPatent = [SELECT SymphonyIPM__Hierarchy__c FROM SymphonyIPM__Patent__c WHERE Id = :testPatent.Id];
+        //System.assertEquals('a1C2E00000P3GehUAF', updatedPatent.SymphonyIPM__Hierarchy__c);
+        //sandbox data
+        System.assertEquals('a1C2i0000024eAeEAI', updatedPatent.SymphonyIPM__Hierarchy__c);
+        
+        
+    }
+}
