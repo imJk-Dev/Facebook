@@ -1,0 +1,47 @@
+global class batchUpdatePath implements Database.Batchable<sObject>
+{
+    private Set<Id> patentIds;
+    
+    public batchUpdatePath(Set<Id> patentIds)
+    {
+        this.patentIds = patentIds;
+    }
+    
+    public Database.QueryLocator start(Database.BatchableContext context)
+    {
+        return Database.getQueryLocator([SELECT Id, SymphonyIPM__Family_ID__c, SymphonyIPM__Hierarchy__c
+                                         FROM SymphonyIPM__Patent__c
+                                         WHERE Id IN :patentIds]);
+    }
+    
+    public void execute(Database.BatchableContext context, List<SymphonyIPM__Patent__c> patent)
+    {
+        String familyId = patent[0].SymphonyIPM__Family_ID__c;
+        Id path = patent[0].SymphonyIPM__Hierarchy__c;
+        
+        List<SymphonyIPM__Patent__c> relatedRecords = [SELECT Id, SymphonyIPM__Family_ID__c, SymphonyIPM__Hierarchy__c
+                                                      FROM SymphonyIPM__Patent__c
+                                                      WHERE SymphonyIPM__Family_ID__c = :familyId
+                                                      AND Id NOT IN :patentIds];
+        
+        for (SymphonyIPM__Patent__c relatedRecord : relatedRecords)
+        {
+            relatedRecord.SymphonyIPM__Hierarchy__c = path;
+        }
+        
+        update relatedRecords;
+    }
+    
+    public void finish(Database.BatchableContext context) 
+    {
+        AsyncApexJob a = [Select Id, Status,ExtendedStatus,NumberOfErrors, JobItemsProcessed,TotalJobItems, CreatedBy.Email 
+                          From AsyncApexJob
+                          Where Id =:context.getJobId()];
+        Messaging.SingleEmailMessage mail = new Messaging.SingleEmailMessage();
+        String[] toAddresses = new String[] {a.CreatedBy.Email};
+        mail.setToAddresses(toAddresses);
+        mail.setSubject('Apex job for Update Path is ' + a.Status);
+        mail.setPlainTextBody('Apex job has been completed for JobId ' + a.Id + 'Total records processed ' + a.TotalJobItems +   'with '+ a.NumberOfErrors + ' failures.');
+        Messaging.sendEmail(new Messaging.SingleEmailMessage[] { mail });
+    }
+}
