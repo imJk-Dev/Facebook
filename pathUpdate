@@ -1,0 +1,52 @@
+/*
+Trigger update path for all the relavant patent record in both way parent to child and child to parent
+Created by - Jeyakarthick (MVSL-1395)
+Ticket - FISD-6160
+*/
+trigger pathUpdate on SymphonyIPM__Patent__c (after update)
+{
+    Set<Id> patentIds = new Set<Id>();
+    for (SymphonyIPM__Patent__c patent : Trigger.new)
+    {
+        SymphonyIPM__Patent__c oldPatent = Trigger.oldMap.get(patent.Id);
+        
+        if (patent.SymphonyIPM__Hierarchy__c != oldPatent.SymphonyIPM__Hierarchy__c)
+        {
+            patentIds.add(patent.Id);
+        }
+    }
+    
+    if (!patentIds.isEmpty())
+    {
+        try
+        {
+            List<SymphonyIPM__Patent__c> getUpdatedRecord = [SELECT Id,SymphonyIPM__Family_ID__c,SymphonyIPM__Hierarchy__c
+                                                             FROM SymphonyIPM__Patent__c
+                                                             Where Id in : patentIds];
+            String familyId = getUpdatedRecord[0].SymphonyIPM__Family_ID__c;
+            Id path = getUpdatedRecord[0].SymphonyIPM__Hierarchy__c;            
+            List<SymphonyIPM__Patent__c> getRelatedRecord = [SELECT Id,SymphonyIPM__Family_ID__c,SymphonyIPM__Hierarchy__c
+                                                             FROM SymphonyIPM__Patent__c
+                                                             Where SymphonyIPM__Family_ID__c =:familyId
+                                                             AND Id NOT IN :patentIds];
+            Integer sizeOfgetRelatedRecord = getRelatedRecord.size();
+            if (sizeOfgetRelatedRecord <= 30)
+            {  
+                for (SymphonyIPM__Patent__c relatedRecord : getRelatedRecord)
+                {
+                    relatedRecord.SymphonyIPM__Hierarchy__c = path;
+                }
+                update getRelatedRecord;
+                
+            }
+            else if (sizeOfgetRelatedRecord >= 30)
+            {
+                Database.executeBatch(new batchUpdatePath(patentIds));
+            }
+        }
+        catch (Exception ex)
+        {
+            System.debug(ex);
+        }
+    }
+}
