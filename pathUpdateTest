@@ -1,0 +1,26 @@
+@isTest
+public class pathUpdateTest
+{
+    @isTest
+    static void testPathUpdate()
+    {
+        // Create a new patent record.
+        Test.startTest();
+        SymphonyIPM__Patent__c patent = new SymphonyIPM__Patent__c();
+        patent.Name = 'Test Patent';
+        patent.SymphonyIPM__Family_ID__c = '202447';
+        patent.SymphonyIPM__Hierarchy__c = 'a1C2i0000024eAeEAI';
+        insert patent;
+        
+        // Update the patent's hierarchy.
+        patent.SymphonyIPM__Hierarchy__c = 'a1C2i0000003a2zEAA';
+        update patent;
+        
+        List<SymphonyIPM__Patent__c> relatedPatents = [SELECT Id, SymphonyIPM__Hierarchy__c FROM SymphonyIPM__Patent__c WHERE SymphonyIPM__Family_ID__c = '100390'];
+        for (SymphonyIPM__Patent__c relatedPatent : relatedPatents)
+        {
+            System.assertEquals('a1C2i0000003a2zEAA', relatedPatent.SymphonyIPM__Hierarchy__c);
+        }
+        Test.stopTest();
+    }
+}
